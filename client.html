@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTTP Client</title>
+</head>
+<body>
+  <h1>HTTP Client</h1>
+  <input type="text" id="keyword" placeholder="Enter keyword" />
+  <button onclick="fetchUrls()">Fetch URLs</button>
+  <ul id="urlList"></ul>
+  <div id="progress"></div>
+  <ul id="contentList"></ul>
+
+  <script>
+    const socket = io('http://localhost:3000');
+    const urlList = document.getElementById('urlList');
+    const contentList = document.getElementById('contentList');
+
+    function fetchUrls() {
+      const keyword = document.getElementById('keyword').value;
+      fetch('http://localhost:3000/urls', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyword })
+      })
+        .then(response => response.json())
+        .then(urls => {
+          urlList.innerHTML = '';
+          urls.forEach(url => {
+            const li = document.createElement('li');
+            li.textContent = url;
+            li.onclick = () => downloadContent(url);
+            urlList.appendChild(li);
+          });
+        });
+    }
+
+    function downloadContent(url) {
+      fetch(`http://localhost:3000/download?url=${encodeURIComponent(url)}`)
+        .then(response => response.text())
+        .then(data => {
+          localStorage.setItem(url, data);
+          displayContent(url, data);
+        });
+    }
+
+    function displayContent(url, data) {
+      const li = document.createElement('li');
+      li.textContent = `${url}: ${data.slice(0, 100)}...`;
+      contentList.appendChild(li);
+    }
+
+    socket.on('progress', (data) => {
+      document.getElementById('progress').textContent = `Downloading ${data.url}: ${data.downloaded}/${data.total}`;
+    });
+  </script>
+
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</body>
+</html>
